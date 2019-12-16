@@ -1,0 +1,128 @@
+---
+title: "Impact of extreme weather events on the economy and public health of the US"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Extreme weather conditions can cause a great economic and health problems in communities. Some of them may cause injuries, property damage and even fatalities. This project explores the U.S National Oceanic and Atmospheric Administration's storm database (1950-2011) to understand some of the most harmful events.
+
+## Synopsis
+
+The analysis is focus in answering two questions: i) Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health? and ii) Across the United States, which types of events have the greatest economic consequences?
+
+In which the conclussions are the following:
+
+1) Tornado is the most harmful event with respect to Population Health.
+2) Floods have caused great economic impact.
+
+
+## Data Processing
+
+This analysis was perform using the Storm Events database provided by [National Climatic Data Center](http://www.ncdc.noaa.gov/). The data is from a comma-separated-value file available [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2).
+Also there is some documentation about the data following this link https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf.
+
+1) Downloading the dataset:
+
+setwd("D:/02 Coursera/02 R/01 Johns Hopkings-Coursera/05 Reproducible Research/05 Project/repdata_data_StormData.csv")
+RawData <- read.csv('repdata_data_StormData.csv', sep = ',', header = TRUE,na.strings = 'NA')
+
+
+```{r,echo=TRUE}
+setwd('D:/02 Coursera/02 R/01 Johns Hopkings-Coursera/05 Reproducible Research')
+download.file("http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2",destfile = "StormData.csv.bz2")
+RawData <- read.csv(bzfile('StormData.csv.bz2'), sep = ',', header = TRUE,na.strings = 'NA')
+```
+2) Definining the 48 events described in the documentation:
+
+```{r,echo=TRUE}
+
+events <- c("Astronomical Low Tide", "Avalanche", "Blizzard", "Coastal Flood", "Cold/Wind Chill", "Debris Flow", "Dense Fog", "Dense Smoke", "Drought", "Dust Devil", "Dust Storm", "Excessive Heat", "Extreme cold/Wind Chill", "Flash Flood", "Flood", "Freezing", "Frost/Freeze", "Funnel Cloud", "Hail", "Heat", "Heavy Rain", "Heavy Snow", "High Surf", "High Wind", "Hurricane/Typhoon", "Ice Storm", "Lakeshore Flood", "Lake-Effect Snow", "Lightning", "Marine Hail", "Marine High Wind", "Marine Strong Wind", "Marine Thunderstorm Wind", "Rip Current", "Seiche", "Sleet", "Storm Tide", "Strong Wind", "Thunderstorm Wind", "Tornado", "Tropical Depression", "Tropical Storm", "Tsunami", "Volcanic Ash", "Waterspout", "Wildfire", "Winter Storm", "Winter Weather")
+
+events_2 <- c("Astronomical Low Tide|Low Tide", "Avalanche", "Blizzard", "Coastal Flood", "Cold/Wind Chill", "Debris Flow", "Dense Fog", "Dense Smoke", "Drought", "Dust Devil", "Dust Storm", "Excessive Heat", "Extreme cold/Wind Chill|Extreme Cold|Wind Chill", "Flash Flood", "Flood", "Freezing", "Frost/Freeze|Frost|Freeze", "Funnel Cloud", "Hail", "Heat", "Heavy Rain", "Heavy Snow", "High Surf", "High Wind", "Hurricane/Typhoon|Hurricane|Typhoon", "Ice Storm", "Lakeshore Flood", "Lake-Effect Snow", "Lightning", "Marine Hail", "Marine High Wind", "Marine Strong Wind", "Marine Thunderstorm Wind|Marine tstm Wind", "Rip Current", "Seiche", "Sleet", "Storm Tide", "Strong Wind", "Thunderstorm Wind|tstm wind", "Tornado", "Tropical Depression", "Tropical Storm", "Tsunami", "Volcanic Ash", "Waterspout", "Wildfire", "Winter Storm", "Winter Weather")
+
+```
+3) Creating empty vector for the variables that we need in order to add some values later on:
+```{r,echo=TRUE}
+options(scipen = 999)
+EVTYPE <- character()
+FATALITIES <- numeric()
+INJURIES <- numeric()
+PROPDMG <- numeric()
+PROPDMGEXP <- character()
+CROPDMG <- numeric()
+CROPDMGEXP <- character()
+```
+4) Creating an empty dataframe with the names of the vectors from above:
+```{r,echo=TRUE}
+ProcData <- data.frame(EVTYPE,FATALITIES,INJURIES,PROPDMG,PROPDMGEXP,CROPDMG,CROPDMGEXP)
+```
+5) Adding values to the new Processed Data (ProcData) by doing a for loop through all observations
+```{r,echo=TRUE}
+for (i in 1:length(events)){
+  rows <- RawData[grep(events_2[i],RawData$EVTYPE,ignore.case = TRUE),]
+  rows <- rows[,c("EVTYPE","FATALITIES","INJURIES","PROPDMG","PROPDMGEXP","CROPDMG","CROPDMGEXP")]
+  Names <- c(rep(events[i],nrow(rows)))
+  rows <- cbind(rows,Names)
+  ProcData <- rbind(ProcData,rows)
+}
+```
+6) Replacing characters with numbers in order to do compute the magnitude. First we need to make sure our vectors are characters otherwise an error will come up.
+```{r,echo=TRUE}
+ProcData$CROPDMGEXP <- as.character(ProcData$CROPDMGEXP)
+ProcData$PROPDMGEXP <- as.character(ProcData$PROPDMGEXP)
+
+ProcData[(ProcData$PROPDMGEXP == "K" | ProcData$PROPDMGEXP == "k"), ]$PROPDMGEXP <- 3
+
+ProcData[(ProcData$PROPDMGEXP == "M" | ProcData$PROPDMGEXP == "m"), ]$PROPDMGEXP <- 6
+
+ProcData[(ProcData$PROPDMGEXP == "B" | ProcData$PROPDMGEXP == "b"), ]$PROPDMGEXP <- 9
+
+ProcData[(ProcData$CROPDMGEXP == "K" | ProcData$CROPDMGEXP == "k"), ]$CROPDMGEXP <- 3
+
+ProcData[(ProcData$CROPDMGEXP == "M" | ProcData$CROPDMGEXP == "m"), ]$CROPDMGEXP <- 6
+
+ProcData[(ProcData$CROPDMGEXP == "B" | ProcData$CROPDMGEXP == "b"), ]$CROPDMGEXP <- 9
+```
+
+7) Compute the economic damage (PROPDMGEXP + CROPDMGEXP)
+```{r,echo=TRUE}
+suppressWarnings(ProcData$PROPDMG <- ProcData$PROPDMG * 10^as.numeric(ProcData$PROPDMGEXP))
+suppressWarnings(ProcData$CROPDMG <- ProcData$CROPDMG * 10^as.numeric(ProcData$CROPDMGEXP))
+suppressWarnings(ProcData$TOTAL_ECODMG <- ProcData$PROPDMG + ProcData$CROPDMG)
+ProcData <- ProcData[, c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "CROPDMG", "Names", "TOTAL_ECODMG")]
+```
+
+## Results
+1) Across the United States, which types of events are most harmful with respect to population health?
+In terms of fatalities we have:
+```{r,echo=TRUE}
+library(ggplot2)
+GroupFatalities <- aggregate(FATALITIES~Names,data=ProcData,FUN = sum)
+GroupFatalities <- GroupFatalities[order(GroupFatalities$FATALITIES,decreasing = TRUE),]
+TopFatalities <- GroupFatalities[1:10,]
+print(TopFatalities)
+
+```
+In terms of injuries we have:
+```{r,echo=TRUE}
+GroupInjuries <- aggregate(INJURIES~Names,data=ProcData,FUN = sum)
+GroupInjuries <- GroupInjuries[order(GroupInjuries$INJURIES,decreasing = TRUE),]
+TopInjuries <- GroupInjuries[1:10,]
+print(TopInjuries)
+```
+2) Across the United States, which types of events have the greatest economic consequences?
+```{r,echo=TRUE}
+TotalEcoDmg <- aggregate(TOTAL_ECODMG~Names,data=ProcData,FUN = sum)
+TotalEcoDmg <- TotalEcoDmg[order(TotalEcoDmg$TOTAL_ECODMG,decreasing = TRUE),]
+TopEconDmg <- TotalEcoDmg[1:10,]
+print(TopEconDmg)
+```
+```{r,echo=TRUE}
+ggplot(TopEconDmg,aes(Names,TOTAL_ECODMG/(10^9))) + geom_bar(stat = "identity",color = "blue",fill = "lightblue") + coord_flip() + ggtitle("Top 10 Events with the Greatest Economic Damages") + labs(x="Events",y = "Economic Damage ($billlions)")
+```
+## Conclusions
+
+We conclude that Tornado and Excesive heat are the most harmuf with respect to Population Health, while Flood and Hurricane had great impact on the US economy.
